@@ -88,9 +88,15 @@ class RedactionService:
 
     def redact_text(self, text: str, entities: list) -> tuple[str, int]:
         try:
-            # 3. FORCE OVERRIDE: Ignore what the user sent, force these entities
-            # We add DATE_OF_BIRTH and DATE_TIME to ensure they are caught
-            analysis_entities = list(set(entities + ["LEGAL_CASE_ID", "PHONE_NUMBER", "DATE_OF_BIRTH", "DATE_TIME"]))
+            # 1. FORCE UPDATE: Add the Australian tags to the "Must Check" list
+            # We use a set() to avoid duplicates
+            forced_entities = [
+                "LEGAL_CASE_ID", "PHONE_NUMBER", "DATE_OF_BIRTH", "DATE_TIME",
+                "AU_MEDICARE", "AU_TFN", "AU_DRIVERS_LICENSE"  # <--- CRITICAL LINE
+            ]
+
+            # Combine user request + forced list
+            analysis_entities = list(set(entities + forced_entities))
 
             results = self.analyzer.analyze(
                 text=text,
@@ -98,11 +104,18 @@ class RedactionService:
                 language='en'
             )
 
+            # 2. Define the labels (What the text becomes)
             operators = {
                 "LEGAL_CASE_ID": OperatorConfig("replace", {"new_value": "[CASE_ID]"}),
                 "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "[PHONE]"}),
                 "DATE_OF_BIRTH": OperatorConfig("replace", {"new_value": "[DOB]"}),
                 "DATE_TIME": OperatorConfig("replace", {"new_value": "[DATE]"}),
+
+                # --- NEW AUSSIE LABELS ---
+                "AU_MEDICARE": OperatorConfig("replace", {"new_value": "[MEDICARE]"}),
+                "AU_TFN": OperatorConfig("replace", {"new_value": "[TFN]"}),
+                "AU_DRIVERS_LICENSE": OperatorConfig("replace", {"new_value": "[LICENSE]"}),
+
                 "DEFAULT": OperatorConfig("replace", {"new_value": "[REDACTED]"})
             }
 
