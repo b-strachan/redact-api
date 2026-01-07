@@ -80,7 +80,7 @@ class RedactionService:
             # --- 0. DATE SAFETY CHECK (The Fix) ---
             # If it has slashes, it's a Date. Period.
             # This prevents "23/07/2000" (8 digits) from being seen as a License.
-            if "/,-, ," in entity_text:
+            if "/" in entity_text:
                 detected_type = "DATE_TIME"
 
             # 1. MOBILE PHONE: Starts with 04, Length 10
