@@ -14,7 +14,7 @@ RedactionAI helps you automatically strip sensitive Australian PII data from tex
 * **Smart Dates:** Context-aware date redaction.
 
 ## How to use
-1. **Get an API Key:** (Contact sales@redactionai.com)
+1. **Get an API Key:** (https://buy.stripe.com/14AcMYci9bZiexua8mak001)
 2. **Authenticate:** Use the `Redact-API-Key` header.
 3. **Send Data:** Post JSON to `/v1/redact/text`.
 """
