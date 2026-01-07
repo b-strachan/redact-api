@@ -6,11 +6,15 @@ from presidio_anonymizer.entities import OperatorConfig
 
 
 class RedactionService:
-    # Regex Definitions
+    # --- REGEX DEFINITIONS ---
     # Medicare: 2-6 start, 10 digits total, allows spaces/dashes
     MEDICARE_REGEX = r"\b[2-6]\d{3}[-\s]+\d{5}[-\s]+\d{1}\b"
+
     # TFN: 9 digits, allows spaces/dashes
     TFN_REGEX = r"\b\d{3}[-\s]+\d{3}[-\s]+\d{3}\b"
+
+    # License: 8-10 digits, BUT MUST NOT START WITH 04 (to avoid mobiles)
+    DL_REGEX = r"\b(?!04)\d{8,10}\b"
 
     def __init__(self):
         print("Initializing NLP Engine...")
@@ -59,11 +63,8 @@ class RedactionService:
             PatternRecognizer(supported_entity="AU_TFN", patterns=[tfn_pattern])
         )
 
-        # 3. License (Score 0.6)
-        # CRITICAL FIX: (?!04) ensures we don't match Mobile Numbers
-        dl_regex = r"\b(?!04)\d{8,10}\b"
-
-        dl_pattern = Pattern(name="au_drivers_license", regex=dl_regex, score=0.6)
+        # 3. License (Score 0.9 - Boosted to beat Spacy Phone)
+        dl_pattern = Pattern(name="au_drivers_license", regex=self.DL_REGEX, score=0.9)
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(
                 supported_entity="AU_DRIVERS_LICENSE",
@@ -73,7 +74,7 @@ class RedactionService:
         )
 
     def add_phone_backup_recognizer(self):
-        # Score 0.5 (Lower than License 0.6, but since License excludes 04, Phone wins 04)
+        # Score 0.5 (Lowest priority)
         regex = r"(?:\b04\d{2}[-\s]?\d{3}[-\s]?\d{3}\b)|(?:\b0[2378][-\s]?\d{4}[-\s]?\d{4}\b)|(?:\b\d{3}[-.]\d{4}\b)"
         pattern = Pattern(name="phone_backup_pattern", regex=regex, score=0.5)
         recognizer = PatternRecognizer(supported_entity="PHONE_NUMBER", patterns=[pattern])
@@ -94,18 +95,30 @@ class RedactionService:
                 language='en'
             )
 
-            # 2. Safety Valve Filter
+            # 2. INTELLIGENT FILTERING (The Magic)
             final_results = []
             for result in results:
 
-                # Safety Valve: If it's a Phone Number, ensure it's not actually Medicare
+                # --- SAFETY VALVE: CORRECTING MISLABELED PHONES ---
                 if result.entity_type == "PHONE_NUMBER":
                     entity_text = text[result.start:result.end]
-                    if re.search(self.MEDICARE_REGEX, entity_text):
-                        if "AU_MEDICARE" not in entities:
-                            continue
 
-                            # Standard Filter
+                    # CHECK 1: Is it actually Medicare?
+                    if re.search(self.MEDICARE_REGEX, entity_text):
+                        if "AU_MEDICARE" in entities:
+                            result.entity_type = "AU_MEDICARE"  # Force Correct Label
+                        else:
+                            continue  # User unchecked Medicare, ignore it.
+
+                    # CHECK 2: Is it actually a License?
+                    # (Matches License format AND DOES NOT match Mobile format 04...)
+                    elif re.search(self.DL_REGEX, entity_text):
+                        if "AU_DRIVERS_LICENSE" in entities:
+                            result.entity_type = "AU_DRIVERS_LICENSE"  # Force Correct Label
+                        else:
+                            continue  # User unchecked License, ignore it.
+
+                # Standard Filter
                 if result.entity_type in entities:
                     final_results.append(result)
 
