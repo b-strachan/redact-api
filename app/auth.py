@@ -1,19 +1,21 @@
 from fastapi import Security, HTTPException, status
 from fastapi.security import APIKeyHeader
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+api_key_header = APIKeyHeader(name="Redact-API-Key", auto_error=False)
 
-API_KEY_NAME = "X-API-Key"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
-
-# This reads the .env file. If it's empty, it defaults to the insecure key.
-VALID_API_KEYS = os.getenv("VALID_API_KEYS", "secret-dev-key").split(",")
 
 async def get_api_key(api_key_header: str = Security(api_key_header)):
-    if api_key_header in VALID_API_KEYS:
+    # 1. Allow the Demo Key (Matches your index.html)
+    if api_key_header == "secret-dev-key":
         return api_key_header
+
+    # 2. Allow the Real Environment Key (For your Pro/Railway settings)
+    env_key = os.getenv("API_KEY")
+    if env_key and api_key_header == env_key:
+        return api_key_header
+
+    # 3. If neither matches, Block access
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Could not validate credentials"
