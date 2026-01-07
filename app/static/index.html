@@ -61,7 +61,24 @@
         </div>
     </div>
 
-    <button onclick="redactText()">Redact Now</button>
+    <form action="/redact" method="post">
+
+    <label>Enter Text to Redact:</label>
+    <textarea name="user_text" rows="5" required></textarea>
+
+    <div style="margin-top: 10px; margin-bottom: 10px;">
+        <label>Pro API Key (Optional):</label>
+        <input type="text" name="api_key" placeholder="Paste key here if you have one">
+    </div>
+
+    <button type="submit">Redact Now</button>
+
+</form>
+
+<p>
+    Need a key?
+    <a href="https://buy.stripe.com/YOUR_LINK_HERE" target="_blank">Subscribe here</a>
+</p>
 </div>
 
 <script>
