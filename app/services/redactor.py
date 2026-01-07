@@ -29,7 +29,6 @@ class RedactionService:
         print("NLP Model & Custom Rules Loaded.")
 
     def add_dob_recognizer(self):
-        # Explicitly catch DD/MM/YYYY or DD-MM-YYYY
         regex = r"\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b"
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(supported_entity="DATE_OF_BIRTH", patterns=[Pattern("dob", regex, 0.95)])
@@ -76,46 +75,52 @@ class RedactionService:
             entity_text = text[result.start:result.end]
             clean_digits = "".join(filter(str.isdigit, entity_text))
 
-            # --- PRIORITY 1: DATES (The Fix) ---
-            # If the AI *already* thinks it's a date, OR it has slashes, trust it.
-            # Do NOT let it fall into the "License" logic.
-            if result.entity_type in ["DATE_TIME", "DATE_OF_BIRTH", "DATE"] or "/" in entity_text:
-                # Map to whatever the user requested (DOB or generic Date)
-                if "DATE_OF_BIRTH" in entities:
-                    result.entity_type = "DATE_OF_BIRTH"
-                    final_results.append(result)
-                elif "DATE_TIME" in entities:
-                    result.entity_type = "DATE_TIME"
-                    final_results.append(result)
-                continue  # STOP HERE. Do not process this item further.
-
-            # --- PRIORITY 2: ID HIERARCHY ---
             detected_type = None
 
-            # 1. MOBILE PHONE: Starts with 04, Length 10
-            if clean_digits.startswith("04") and len(clean_digits) == 10:
-                detected_type = "PHONE_NUMBER"
+            # --- STEP 1: HARD DATE CHECK (Highest Priority) ---
+            # If it explicitly has a slash, it is a Date. No debate.
+            if "/" in entity_text:
+                detected_type = "DATE_TIME"
 
-            # 2. MEDICARE: Starts with 2-6, Length 10
-            elif clean_digits and clean_digits[0] in "23456" and len(clean_digits) == 10:
-                detected_type = "AU_MEDICARE"
+            # --- STEP 2: STRONG ID CHECKS (Overrides Soft Dates) ---
+            # If we haven't found a type yet, check for specific ID patterns.
+            if not detected_type:
+                # A. MOBILE PHONE: Starts with 04, Length 10
+                if clean_digits.startswith("04") and len(clean_digits) == 10:
+                    detected_type = "PHONE_NUMBER"
 
-            # 3. 9-DIGIT CONFLICT (TFN vs License)
-            elif len(clean_digits) == 9:
-                if self.check_context(text, result.start, ["license", "licence", "driver", "dl", "vic roads"]):
-                    detected_type = "AU_DRIVERS_LICENSE"
-                else:
-                    detected_type = "AU_TFN"
+                # B. MEDICARE: Starts with 2-6, Length 10
+                elif clean_digits and clean_digits[0] in "23456" and len(clean_digits) == 10:
+                    detected_type = "AU_MEDICARE"
 
-            # 4. LICENSE: Length 8 or 10 (Fallback)
-            elif 8 <= len(clean_digits) <= 10:
+                # C. 9-DIGIT CONFLICT (TFN vs License)
+                elif len(clean_digits) == 9:
+                    if self.check_context(text, result.start, ["license", "licence", "driver", "dl", "vic roads"]):
+                        detected_type = "AU_DRIVERS_LICENSE"
+                    else:
+                        detected_type = "AU_TFN"
+
+            # --- STEP 3: SOFT DATE CHECK (If it wasn't a Strong ID) ---
+            # If it didn't match the IDs above, BUT Spacy thinks it's a date
+            # (e.g. "01 01 1990"), we accept it now.
+            if not detected_type and result.entity_type in ["DATE_TIME", "DATE_OF_BIRTH", "DATE"]:
+                detected_type = "DATE_TIME"
+
+            # --- STEP 4: WEAK ID CHECK (Fallback) ---
+            # If it's 8-10 digits and nothing else matched, assume License.
+            if not detected_type and (8 <= len(clean_digits) <= 10):
                 detected_type = "AU_DRIVERS_LICENSE"
 
-            # 5. KEEP ORIGINAL
-            else:
+            # --- STEP 5: DEFAULT FALLBACK ---
+            if not detected_type:
                 detected_type = result.entity_type
 
-            # --- FILTERING ---
+            # --- FINAL MAPPING & FILTERING ---
+
+            # Map Generic Date to DOB if requested
+            if detected_type == "DATE_TIME" and "DATE_OF_BIRTH" in entities:
+                detected_type = "DATE_OF_BIRTH"
+
             if detected_type and detected_type in entities:
                 result.entity_type = detected_type
                 final_results.append(result)
