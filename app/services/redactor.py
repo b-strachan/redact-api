@@ -93,38 +93,34 @@ class RedactionService:
 
     def redact_text(self, text: str, entities: list) -> tuple[str, int]:
         try:
-            # 1. FORCE UPDATE: Always check for these entities, even if user didn't ask.
-            forced_entities = [
-                "LEGAL_CASE_ID", "PHONE_NUMBER", "DATE_OF_BIRTH", "DATE_TIME",
-                "AU_MEDICARE", "AU_TFN", "AU_DRIVERS_LICENSE"
-            ]
+            # 1. ANALYSIS: Use the list EXACTLY as the user sent it.
+            # We no longer force "AU_MEDICARE" etc. if the user didn't ask for it.
 
-            # Combine user request + forced list
-            analysis_entities = list(set(entities + forced_entities))
+            # If the user sent an empty list (redact nothing), return immediately
+            if not entities:
+                return text, 0
 
-            # 2. Analyze
             results = self.analyzer.analyze(
                 text=text,
-                entities=analysis_entities,
+                entities=entities,
                 language='en'
             )
 
-            # 3. Define the Replacement Labels
+            # 2. LABELS: We still define the replacement tags for everything,
+            # just in case the user asks for them.
             operators = {
                 "LEGAL_CASE_ID": OperatorConfig("replace", {"new_value": "[CASE_ID]"}),
                 "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "[PHONE]"}),
+                "EMAIL_ADDRESS": OperatorConfig("replace", {"new_value": "[EMAIL]"}),  # <--- Added Email
                 "DATE_OF_BIRTH": OperatorConfig("replace", {"new_value": "[DOB]"}),
                 "DATE_TIME": OperatorConfig("replace", {"new_value": "[DATE]"}),
-
-                # Aussie Labels
                 "AU_MEDICARE": OperatorConfig("replace", {"new_value": "[MEDICARE]"}),
                 "AU_TFN": OperatorConfig("replace", {"new_value": "[TFN]"}),
                 "AU_DRIVERS_LICENSE": OperatorConfig("replace", {"new_value": "[LICENSE]"}),
-
+                "PERSON": OperatorConfig("replace", {"new_value": "[PERSON]"}),
                 "DEFAULT": OperatorConfig("replace", {"new_value": "[REDACTED]"})
             }
 
-            # 4. Anonymize
             anonymized_result = self.anonymizer.anonymize(
                 text=text,
                 analyzer_results=results,
@@ -136,7 +132,6 @@ class RedactionService:
         except Exception as e:
             print(f"CRASH IN REDACTOR: {str(e)}")
             raise e
-
 
 # Create singleton instance
 redactor = RedactionService()

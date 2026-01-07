@@ -8,12 +8,20 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; color: #333; display: flex; justify-content: center; padding: 50px; }
         .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 800px; }
         h1 { margin-top: 0; color: #2d3748; }
+
+        /* Layout for the checkboxes */
+        .options-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; background: #edf2f7; padding: 15px; border-radius: 8px; }
+        .checkbox-item { display: flex; align-items: center; font-size: 14px; color: #4a5568; font-weight: 500; }
+        .checkbox-item input { margin-right: 8px; accent-color: #4299e1; cursor: pointer; transform: scale(1.1); }
+
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
         textarea { width: 100%; height: 200px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; resize: none; box-sizing: border-box; }
         textarea:focus { outline: 2px solid #4299e1; border-color: transparent; }
-        button { background-color: #4299e1; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: background 0.2s; }
+
+        button { background-color: #4299e1; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: background 0.2s; width: 100%; font-size: 16px; }
         button:hover { background-color: #3182ce; }
-        .output { background-color: #edf2f7; border: 1px solid #e2e8f0; color: #2d3748; }
+
+        .output { background-color: #f7fafc; border: 1px solid #e2e8f0; color: #2d3748; }
         label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em; color: #718096; }
     </style>
 </head>
@@ -24,17 +32,28 @@
 
     <div style="background: #e6fffa; border: 1px solid #38b2ac; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
         <span style="color: #234e52; font-weight: 600;">Need to process more documents? Get the Pro API.</span>
-        <a href="YOUR_STRIPE_LINK_HERE" target="_blank" style="background-color: #38b2ac; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: bold;">
-            Subscribe ($9/mo)
-        </a>
+        <a href="YOUR_STRIPE_LINK_HERE" target="_blank" style="background-color: #38b2ac; color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; font-weight: bold; font-size: 14px;">Subscribe ($9/mo)</a>
     </div>
 
-    <p>Paste legal text, emails, or phone numbers below to see the AI redaction in real-time.</p>
+    <label>Select entities to redact:</label>
+    <div class="options-grid">
+        <label class="checkbox-item"><input type="checkbox" id="chk_person" checked> Names (Person)</label>
+        <label class="checkbox-item"><input type="checkbox" id="chk_email" checked> Emails</label>
+        <label class="checkbox-item"><input type="checkbox" id="chk_phone" checked> Phone Numbers</label>
+
+        <label class="checkbox-item"><input type="checkbox" id="chk_medicare" checked> 🇦🇺 Medicare</label>
+        <label class="checkbox-item"><input type="checkbox" id="chk_tfn" checked> 🇦🇺 TFN</label>
+        <label class="checkbox-item"><input type="checkbox" id="chk_license" checked> 🇦🇺 Driver License</label>
+
+        <label class="checkbox-item"><input type="checkbox" id="chk_dob" checked> Dates of Birth</label>
+        <label class="checkbox-item"><input type="checkbox" id="chk_case" checked> Legal Case IDs</label>
+        <label class="checkbox-item"><input type="checkbox" id="chk_location" checked> Locations</label>
+    </div>
 
     <div class="grid">
         <div>
             <label>Original Text</label>
-            <textarea id="inputText" placeholder="Employee: John Smith, TFN: 123 456 789, Medicare: 2123 45678 1. Please process payroll."></textarea>
+            <textarea id="inputText" placeholder="Enter text here... e.g. Contact john.doe@email.com regarding Medicare 4123 45678 1."></textarea>
         </div>
         <div>
             <label>Redacted Result</label>
@@ -52,6 +71,25 @@
 
         outputBox.value = "Processing...";
 
+        // Dynamic List Builder
+        // We only add the tag to the list if the checkbox is CHECKED
+        let entities = [];
+
+        if(document.getElementById("chk_person").checked) entities.push("PERSON");
+        if(document.getElementById("chk_email").checked) entities.push("EMAIL_ADDRESS");
+        if(document.getElementById("chk_phone").checked) entities.push("PHONE_NUMBER");
+
+        if(document.getElementById("chk_medicare").checked) entities.push("AU_MEDICARE");
+        if(document.getElementById("chk_tfn").checked) entities.push("AU_TFN");
+        if(document.getElementById("chk_license").checked) entities.push("AU_DRIVERS_LICENSE");
+
+        if(document.getElementById("chk_dob").checked) entities.push("DATE_OF_BIRTH");
+        if(document.getElementById("chk_case").checked) entities.push("LEGAL_CASE_ID");
+        if(document.getElementById("chk_location").checked) entities.push("LOCATION");
+
+        // Always check generically for Dates if DOB is checked, to be safe
+        if(document.getElementById("chk_dob").checked) entities.push("DATE_TIME");
+
         try {
             const response = await fetch('/v1/redact/text', {
                 method: 'POST',
@@ -61,19 +99,7 @@
                 },
                 body: JSON.stringify({
                     text: text,
-                    entities_to_redact: [
-                        "PERSON",
-                        "PHONE_NUMBER",
-                        "LEGAL_CASE_ID",
-                        "EMAIL_ADDRESS",
-                        "DATE_OF_BIRTH",
-                        "DATE_TIME",
-                        "US_SSN",
-                        "LOCATION",
-                        "AU_MEDICARE",
-                        "AU_TFN",
-                        "AU_DRIVERS_LICENSE"
-                    ]
+                    entities_to_redact: entities
                 })
             });
 
