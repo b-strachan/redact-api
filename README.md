@@ -1,4 +1,4 @@
-# RedactAI - Australian Privacy Compliance API 🇦🇺
+# RedactAI - Australian Privacy Compliance API
 
 **A specialized Vertical AI service for redacting Australian Personally Identifiable Information (PII) from documents.**
 
