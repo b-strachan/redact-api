@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RedactAI - Australian Privacy Compliance</title>
+    <title>RedactionAI - Australian Privacy Compliance</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; color: #333; display: flex; justify-content: center; padding: 50px; }
         .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 800px; }
@@ -27,11 +27,11 @@
 <body>
 
 <div class="container">
-    <h1>RedactAI Demo</h1>
+    <h1>RedactionAI Demo</h1>
 
     <div style="background: #e6fffa; border: 1px solid #38b2ac; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
         <span style="color: #234e52; font-weight: 600;">Need to process more documents? Get the Pro API.</span>
-        <a href="https://buy.stripe.com/14AcMYci9bZiexua8mak001" target="_blank" style="background-color: #38b2ac; color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; font-weight: bold; font-size: 14px;">Subscribe ($9/mo)</a>
+        <a href="#" target="_blank" style="background-color: #38b2ac; color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; font-weight: bold; font-size: 14px;">Subscribe ($9/mo)</a>
     </div>
 
     <label>Select entities to redact:</label>
@@ -51,7 +51,7 @@
     <div class="grid">
         <div>
             <label>Original Text</label>
-            <textarea id="inputText" placeholder="Employee: John Smith&#10;Email: john.smith@example.com&#10;Mobile: 0400 123 456&#10;Medicare: 2123 45678 9&#10;TFN: 123 456 789&#10;License: 11223344&#10;DOB: 01/01/1990"></textarea>
+            <textarea id="inputText" placeholder="My name is John Doe&#10;Email me at test@gmail.com&#10;Medicare: 4123 45678 1&#10;License: 098567234"></textarea>
         </div>
         <div>
             <label>Redacted Result</label>
@@ -82,7 +82,6 @@
         if(document.getElementById("chk_dob").checked) entities.push("DATE_OF_BIRTH");
         if(document.getElementById("chk_location").checked) entities.push("LOCATION");
 
-        // Safety: If checking DOB, also check generic Date/Time to catch formats
         if(document.getElementById("chk_dob").checked) entities.push("DATE_TIME");
 
         try {
