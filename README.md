@@ -34,7 +34,7 @@ RedactAI implements a custom decision tree on top of Microsoft Presidio and Spac
 * **Deployment:** Docker & Railway
 * **Infrastructure:** CI/CD via GitHub Actions
 
-Local Installation
+## Local Installation
 
 # 1. Clone the repo
 git clone [https://github.com/b-strachan/redact-api.git](https://github.com//b-strachan/redact-api.git)
