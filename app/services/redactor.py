@@ -61,7 +61,7 @@ class RedactionService:
         if not entities: return text, 0
 
         # FORCE CHECK for our generic ID catcher
-        analysis_entities = list(set(entities + ["AU_GENERIC_ID", "PHONE_NUMBER"]))
+        analysis_entities = list(set(entities + ["AU_GENERIC_ID", "PHONE_NUMBER", "DATE_TIME"]))
 
         results = self.analyzer.analyze(
             text=text,
@@ -77,8 +77,14 @@ class RedactionService:
 
             detected_type = None
 
+            # --- 0. DATE SAFETY CHECK (The Fix) ---
+            # If it has slashes, it's a Date. Period.
+            # This prevents "23/07/2000" (8 digits) from being seen as a License.
+            if "/,-, ," in entity_text:
+                detected_type = "DATE_TIME"
+
             # 1. MOBILE PHONE: Starts with 04, Length 10
-            if clean_digits.startswith("04") and len(clean_digits) == 10:
+            elif clean_digits.startswith("04") and len(clean_digits) == 10:
                 detected_type = "PHONE_NUMBER"
 
             # 2. MEDICARE: Starts with 2-6, Length 10
@@ -91,10 +97,9 @@ class RedactionService:
                 if self.check_context(text, result.start, ["license", "licence", "driver", "dl", "vic roads"]):
                     detected_type = "AU_DRIVERS_LICENSE"
                 else:
-                    # Default to TFN if no specific license word is found
                     detected_type = "AU_TFN"
 
-            # 4. LICENSE: Length 8 or 10 (Non-Medicare/Non-Phone)
+            # 4. LICENSE: Length 8 or 10 (Fallback)
             elif 8 <= len(clean_digits) <= 10:
                 detected_type = "AU_DRIVERS_LICENSE"
 
@@ -103,7 +108,16 @@ class RedactionService:
                 detected_type = result.entity_type
 
             # --- FILTERING ---
-            if detected_type and detected_type in entities:
+            # If detected as DATE_TIME, map it to what the user asked for (DOB or Date)
+            if detected_type == "DATE_TIME":
+                if "DATE_OF_BIRTH" in entities:
+                    result.entity_type = "DATE_OF_BIRTH"
+                    final_results.append(result)
+                elif "DATE_TIME" in entities:
+                    result.entity_type = "DATE_TIME"
+                    final_results.append(result)
+
+            elif detected_type and detected_type in entities:
                 result.entity_type = detected_type
                 final_results.append(result)
 
