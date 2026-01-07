@@ -6,9 +6,10 @@ from presidio_anonymizer.entities import OperatorConfig
 
 
 class RedactionService:
-    # Define Regex Patterns at class level to ensure consistency
-    # \s matches ANY whitespace (space, tab, newline, non-breaking space)
+    # Regex Definitions
+    # Medicare: 2-6 start, 10 digits total, allows spaces/dashes
     MEDICARE_REGEX = r"\b[2-6]\d{3}[-\s]+\d{5}[-\s]+\d{1}\b"
+    # TFN: 9 digits, allows spaces/dashes
     TFN_REGEX = r"\b\d{3}[-\s]+\d{3}[-\s]+\d{3}\b"
 
     def __init__(self):
@@ -25,7 +26,7 @@ class RedactionService:
         self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
         self.anonymizer = AnonymizerEngine()
 
-        # Load Custom Rules
+        # Load Rules
         self.add_legal_recognizer()
         self.add_dob_recognizer()
         self.add_australian_recognizers()
@@ -46,20 +47,22 @@ class RedactionService:
         self.analyzer.registry.add_recognizer(recognizer)
 
     def add_australian_recognizers(self):
-        # 1. Medicare Card (Score 1.0)
+        # 1. Medicare (Score 1.0)
         medicare_pattern = Pattern(name="au_medicare", regex=self.MEDICARE_REGEX, score=1.0)
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(supported_entity="AU_MEDICARE", patterns=[medicare_pattern])
         )
 
-        # 2. Tax File Number (TFN) (Score 1.0)
+        # 2. TFN (Score 1.0)
         tfn_pattern = Pattern(name="au_tfn", regex=self.TFN_REGEX, score=1.0)
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(supported_entity="AU_TFN", patterns=[tfn_pattern])
         )
 
-        # 3. Australian Driver's License
-        dl_regex = r"\b\d{8,10}\b"
+        # 3. License (Score 0.6)
+        # CRITICAL FIX: (?!04) ensures we don't match Mobile Numbers
+        dl_regex = r"\b(?!04)\d{8,10}\b"
+
         dl_pattern = Pattern(name="au_drivers_license", regex=dl_regex, score=0.6)
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(
@@ -70,7 +73,7 @@ class RedactionService:
         )
 
     def add_phone_backup_recognizer(self):
-        # Score lowered to 0.5 to allow Medicare (1.0) to win easier
+        # Score 0.5 (Lower than License 0.6, but since License excludes 04, Phone wins 04)
         regex = r"(?:\b04\d{2}[-\s]?\d{3}[-\s]?\d{3}\b)|(?:\b0[2378][-\s]?\d{4}[-\s]?\d{4}\b)|(?:\b\d{3}[-.]\d{4}\b)"
         pattern = Pattern(name="phone_backup_pattern", regex=regex, score=0.5)
         recognizer = PatternRecognizer(supported_entity="PHONE_NUMBER", patterns=[pattern])
@@ -81,7 +84,7 @@ class RedactionService:
             if not entities:
                 return text, 0
 
-            # 1. ANALYSIS: ALWAYS force check for Aussie IDs
+            # 1. Force Aussie Checks
             forced_conflicts = ["AU_MEDICARE", "AU_TFN", "AU_DRIVERS_LICENSE"]
             analysis_entities = list(set(entities + forced_conflicts))
 
@@ -91,29 +94,22 @@ class RedactionService:
                 language='en'
             )
 
-            # 2. INTELLIGENT FILTERING (The Fix)
+            # 2. Safety Valve Filter
             final_results = []
             for result in results:
 
-                # --- SAFETY VALVE START ---
-                # If the AI thinks it found a Phone Number, we double-check:
-                # "Is this actually a Medicare number that got mislabeled?"
+                # Safety Valve: If it's a Phone Number, ensure it's not actually Medicare
                 if result.entity_type == "PHONE_NUMBER":
                     entity_text = text[result.start:result.end]
-
-                    # If it matches the Medicare Regex...
                     if re.search(self.MEDICARE_REGEX, entity_text):
-                        # ...AND the user did NOT ask for Medicare redaction...
                         if "AU_MEDICARE" not in entities:
-                            # ...then this is a False Positive. IGNORE IT.
                             continue
-                            # --- SAFETY VALVE END ---
 
-                # Standard check: Did the user ask for this entity type?
+                            # Standard Filter
                 if result.entity_type in entities:
                     final_results.append(result)
 
-            # 3. LABELS
+            # 3. Labels
             operators = {
                 "LEGAL_CASE_ID": OperatorConfig("replace", {"new_value": "[CASE_ID]"}),
                 "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "[PHONE]"}),
