@@ -21,21 +21,12 @@ class RedactionService:
         self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
         self.anonymizer = AnonymizerEngine()
 
-        # 2. LOAD RULES
-        self.add_legal_recognizer()
+        # 2. LOAD RULES (Legal Case ID removed)
         self.add_dob_recognizer()
-        # We add a generic "Aussie Number" catcher.
-        # We will sort out what it actually IS inside redact_text().
         self.add_generic_aussie_catcher()
         self.add_phone_backup_recognizer()
 
         print("NLP Model & Custom Rules Loaded.")
-
-    def add_legal_recognizer(self):
-        regex = r"(?i)\bCase\s?No\.?\s?\d{2}-\d{4}\b"
-        self.analyzer.registry.add_recognizer(
-            PatternRecognizer(supported_entity="LEGAL_CASE_ID", patterns=[Pattern("case", regex, 0.85)])
-        )
 
     def add_dob_recognizer(self):
         regex = r"\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b"
@@ -45,17 +36,15 @@ class RedactionService:
 
     def add_generic_aussie_catcher(self):
         """
-        Instead of separate complex rules, we catch ALL 8-10 digit numbers here.
-        We will assign the correct label (Medicare vs License vs TFN) in the logic loop.
+        Catches ALL 8-10 digit numbers.
+        We assign the correct label (Medicare vs License vs TFN) in the logic loop below.
         """
-        # Matches 8 to 10 digits, with optional spaces or dashes
         regex = r"\b\d{3}[-\s]?\d{3}[-\s]?\d{2,4}\b"
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(supported_entity="AU_GENERIC_ID", patterns=[Pattern("au_id", regex, 0.8)])
         )
 
     def add_phone_backup_recognizer(self):
-        # Standard phone backup
         regex = r"(?:\b04\d{2}[-\s]?\d{3}[-\s]?\d{3}\b)|(?:\b0[2378][-\s]?\d{4}[-\s]?\d{4}\b)|(?:\b\d{3}[-.]\d{4}\b)"
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(supported_entity="PHONE_NUMBER", patterns=[Pattern("phone", regex, 0.6)])
@@ -77,19 +66,16 @@ class RedactionService:
 
         for result in results:
             entity_text = text[result.start:result.end]
-            # Clean the number (remove spaces/dashes) to check length/start
             clean_digits = "".join(filter(str.isdigit, entity_text))
 
             # --- THE STRICT HIERARCHY ---
-            # This logic runs on EVERY number found to assign the correct tag.
-
             detected_type = None
 
             # 1. MOBILE PHONE: Starts with 04, Length 10
             if clean_digits.startswith("04") and len(clean_digits) == 10:
                 detected_type = "PHONE_NUMBER"
 
-            # 2. MEDICARE: Starts with 2-6, Length 10 (AND not a mobile)
+            # 2. MEDICARE: Starts with 2-6, Length 10
             elif clean_digits and clean_digits[0] in "23456" and len(clean_digits) == 10:
                 detected_type = "AU_MEDICARE"
 
@@ -97,24 +83,21 @@ class RedactionService:
             elif len(clean_digits) == 9:
                 detected_type = "AU_TFN"
 
-            # 4. LICENSE: Length 8-10 (Fallback for anything else)
+            # 4. LICENSE: Length 8-10
             elif 8 <= len(clean_digits) <= 10:
                 detected_type = "AU_DRIVERS_LICENSE"
 
-            # 5. KEEP ORIGINAL (If spacy found a name/email/date etc)
+            # 5. KEEP ORIGINAL
             else:
                 detected_type = result.entity_type
 
             # --- FILTERING ---
-            # Only keep it if the user asked for it
             if detected_type and detected_type in entities:
-                # Update the result object with the corrected type
                 result.entity_type = detected_type
                 final_results.append(result)
 
-        # LABELS
+        # LABELS (Legal Case ID removed)
         operators = {
-            "LEGAL_CASE_ID": OperatorConfig("replace", {"new_value": "[CASE_ID]"}),
             "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "[PHONE]"}),
             "EMAIL_ADDRESS": OperatorConfig("replace", {"new_value": "[EMAIL]"}),
             "DATE_OF_BIRTH": OperatorConfig("replace", {"new_value": "[DOB]"}),
@@ -124,7 +107,7 @@ class RedactionService:
             "AU_DRIVERS_LICENSE": OperatorConfig("replace", {"new_value": "[LICENSE]"}),
             "PERSON": OperatorConfig("replace", {"new_value": "[PERSON]"}),
             "LOCATION": OperatorConfig("replace", {"new_value": "[LOCATION]"}),
-            "AU_GENERIC_ID": OperatorConfig("replace", {"new_value": "[ID]"}),  # Fallback
+            "AU_GENERIC_ID": OperatorConfig("replace", {"new_value": "[ID]"}),
             "DEFAULT": OperatorConfig("replace", {"new_value": "[REDACTED]"})
         }
 

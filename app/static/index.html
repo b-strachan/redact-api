@@ -9,7 +9,6 @@
         .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 800px; }
         h1 { margin-top: 0; color: #2d3748; }
 
-        /* Layout for the checkboxes */
         .options-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; background: #edf2f7; padding: 15px; border-radius: 8px; }
         .checkbox-item { display: flex; align-items: center; font-size: 14px; color: #4a5568; font-weight: 500; }
         .checkbox-item input { margin-right: 8px; accent-color: #4299e1; cursor: pointer; transform: scale(1.1); }
@@ -32,7 +31,7 @@
 
     <div style="background: #e6fffa; border: 1px solid #38b2ac; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
         <span style="color: #234e52; font-weight: 600;">Need to process more documents? Get the Pro API.</span>
-        <a href="YOUR_STRIPE_LINK_HERE" target="_blank" style="background-color: #38b2ac; color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; font-weight: bold; font-size: 14px;">Subscribe ($9/mo)</a>
+        <a href="https://buy.stripe.com/test_..." target="_blank" style="background-color: #38b2ac; color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; font-weight: bold; font-size: 14px;">Subscribe ($9/mo)</a>
     </div>
 
     <label>Select entities to redact:</label>
@@ -46,14 +45,13 @@
         <label class="checkbox-item"><input type="checkbox" id="chk_license" checked> 🇦🇺 Driver License</label>
 
         <label class="checkbox-item"><input type="checkbox" id="chk_dob" checked> Dates of Birth</label>
-        <label class="checkbox-item"><input type="checkbox" id="chk_case" checked> Legal Case IDs</label>
         <label class="checkbox-item"><input type="checkbox" id="chk_location" checked> Locations</label>
     </div>
 
     <div class="grid">
         <div>
             <label>Original Text</label>
-            <textarea id="inputText" placeholder="Enter text here... e.g. Contact john.doe@email.com regarding Medicare 4123 45678 1."></textarea>
+            <textarea id="inputText" placeholder="Employee: John Smith&#10;Email: john.smith@example.com&#10;Mobile: 0400 123 456&#10;Medicare: 2123 45678 9&#10;TFN: 123 456 789&#10;License: 11223344&#10;DOB: 01/01/1990"></textarea>
         </div>
         <div>
             <label>Redacted Result</label>
@@ -71,8 +69,6 @@
 
         outputBox.value = "Processing...";
 
-        // Dynamic List Builder
-        // We only add the tag to the list if the checkbox is CHECKED
         let entities = [];
 
         if(document.getElementById("chk_person").checked) entities.push("PERSON");
@@ -84,10 +80,9 @@
         if(document.getElementById("chk_license").checked) entities.push("AU_DRIVERS_LICENSE");
 
         if(document.getElementById("chk_dob").checked) entities.push("DATE_OF_BIRTH");
-        if(document.getElementById("chk_case").checked) entities.push("LEGAL_CASE_ID");
         if(document.getElementById("chk_location").checked) entities.push("LOCATION");
 
-        // Always check generically for Dates if DOB is checked, to be safe
+        // Safety: If checking DOB, also check generic Date/Time to catch formats
         if(document.getElementById("chk_dob").checked) entities.push("DATE_TIME");
 
         try {
