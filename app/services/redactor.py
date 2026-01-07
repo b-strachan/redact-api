@@ -21,7 +21,7 @@ class RedactionService:
         self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
         self.anonymizer = AnonymizerEngine()
 
-        # 2. LOAD RULES (Legal Case ID removed)
+        # 2. LOAD RULES
         self.add_dob_recognizer()
         self.add_generic_aussie_catcher()
         self.add_phone_backup_recognizer()
@@ -37,7 +37,7 @@ class RedactionService:
     def add_generic_aussie_catcher(self):
         """
         Catches ALL 8-10 digit numbers.
-        We assign the correct label (Medicare vs License vs TFN) in the logic loop below.
+        We assign the correct label in the logic loop below.
         """
         regex = r"\b\d{3}[-\s]?\d{3}[-\s]?\d{2,4}\b"
         self.analyzer.registry.add_recognizer(
@@ -49,6 +49,13 @@ class RedactionService:
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(supported_entity="PHONE_NUMBER", patterns=[Pattern("phone", regex, 0.6)])
         )
+
+    def check_context(self, text, start_index, keywords, window=30):
+        """
+        Looks at the text immediately BEFORE the number to see if a keyword exists.
+        """
+        snippet = text[max(0, start_index - window):start_index].lower()
+        return any(word in snippet for word in keywords)
 
     def redact_text(self, text: str, entities: list) -> tuple[str, int]:
         if not entities: return text, 0
@@ -68,7 +75,6 @@ class RedactionService:
             entity_text = text[result.start:result.end]
             clean_digits = "".join(filter(str.isdigit, entity_text))
 
-            # --- THE STRICT HIERARCHY ---
             detected_type = None
 
             # 1. MOBILE PHONE: Starts with 04, Length 10
@@ -79,11 +85,16 @@ class RedactionService:
             elif clean_digits and clean_digits[0] in "23456" and len(clean_digits) == 10:
                 detected_type = "AU_MEDICARE"
 
-            # 3. TFN: Length 9
+            # 3. THE 9-DIGIT CONFLICT (TFN vs License)
             elif len(clean_digits) == 9:
-                detected_type = "AU_TFN"
+                # Check context for "License" words
+                if self.check_context(text, result.start, ["license", "licence", "driver", "dl", "vic roads"]):
+                    detected_type = "AU_DRIVERS_LICENSE"
+                else:
+                    # Default to TFN if no specific license word is found
+                    detected_type = "AU_TFN"
 
-            # 4. LICENSE: Length 8-10
+            # 4. LICENSE: Length 8 or 10 (Non-Medicare/Non-Phone)
             elif 8 <= len(clean_digits) <= 10:
                 detected_type = "AU_DRIVERS_LICENSE"
 
@@ -96,7 +107,7 @@ class RedactionService:
                 result.entity_type = detected_type
                 final_results.append(result)
 
-        # LABELS (Legal Case ID removed)
+        # LABELS
         operators = {
             "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "[PHONE]"}),
             "EMAIL_ADDRESS": OperatorConfig("replace", {"new_value": "[EMAIL]"}),
