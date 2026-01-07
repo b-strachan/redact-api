@@ -95,28 +95,34 @@ class RedactionService:
                 language='en'
             )
 
-            # 2. INTELLIGENT FILTERING (The Magic)
+            # 2. INTELLIGENT FILTERING
             final_results = []
             for result in results:
+                entity_text = text[result.start:result.end]
 
-                # --- SAFETY VALVE: CORRECTING MISLABELED PHONES ---
+                # --- SAFETY VALVE 1: PHONES vs MEDICARE/LICENSE ---
                 if result.entity_type == "PHONE_NUMBER":
-                    entity_text = text[result.start:result.end]
-
-                    # CHECK 1: Is it actually Medicare?
+                    # Is it actually Medicare?
                     if re.search(self.MEDICARE_REGEX, entity_text):
                         if "AU_MEDICARE" in entities:
-                            result.entity_type = "AU_MEDICARE"  # Force Correct Label
+                            result.entity_type = "AU_MEDICARE"
                         else:
-                            continue  # User unchecked Medicare, ignore it.
-
-                    # CHECK 2: Is it actually a License?
-                    # (Matches License format AND DOES NOT match Mobile format 04...)
+                            continue
+                            # Is it actually a License?
                     elif re.search(self.DL_REGEX, entity_text):
                         if "AU_DRIVERS_LICENSE" in entities:
-                            result.entity_type = "AU_DRIVERS_LICENSE"  # Force Correct Label
+                            result.entity_type = "AU_DRIVERS_LICENSE"
                         else:
-                            continue  # User unchecked License, ignore it.
+                            continue
+
+                # --- SAFETY VALVE 2: DATES vs LICENSE (The New Fix) ---
+                # Sometimes a License starting with 09 or 20 looks like a Date
+                elif result.entity_type == "DATE_TIME":
+                    if re.search(self.DL_REGEX, entity_text):
+                        if "AU_DRIVERS_LICENSE" in entities:
+                            result.entity_type = "AU_DRIVERS_LICENSE"
+                        else:
+                            continue  # It was a license, user unchecked it -> Ignore.
 
                 # Standard Filter
                 if result.entity_type in entities:
