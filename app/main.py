@@ -1,62 +1,79 @@
 from fastapi import FastAPI, Form, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from typing import List, Optional
+
+# Import the AI engines
+from presidio_analyzer import AnalyzerEngine
+from presidio_anonymizer import AnonymizerEngine
 
 app = FastAPI()
-
-# Tell FastAPI to look for HTML files in the "templates" folder
 templates = Jinja2Templates(directory="templates")
 
+# Initialize the engines once (when server starts)
+analyzer = AnalyzerEngine()
+anonymizer = AnonymizerEngine()
 
-# 1. The Home Page (GET Request)
-# This runs when you first open the website. We send empty strings "" to the boxes.
+# VALID API KEYS (You can add more here)
+VALID_KEYS = ["pro_key_123", "secret-dev-key", "bailey-admin"]
+
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
+    # Render the empty form on first load
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "original_text": "",  # Empty on start
-        "result_text": ""  # Empty on start
+        "original_text": "",
+        "result_text": ""
     })
 
-
-# ... imports and setup ...
 
 @app.post("/redact", response_class=HTMLResponse)
 async def redact_text(
         request: Request,
         user_text: str = Form(...),
+        entities: List[str] = Form(default=[]),  # Gets the checkboxes!
         api_key: str = Form(default="")
 ):
-    # 1. Check if Pro
+    # 1. CHECK FOR PRO ACCESS
     is_pro = False
-    valid_keys = ["pro_key_123", "secret-dev-key"]  # Add your real keys here
-
-    if api_key in valid_keys:
+    if api_key in VALID_KEYS:
         is_pro = True
 
-    # 2. RUN YOUR REAL REDACTION HERE
-    # (I am putting your probable logic here based on your previous messages)
+    # 2. CONFIGURE ENTITIES
+    # If the user selected nothing, default to standard PII
+    if not entities:
+        entities = ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"]
 
-    # --- START OF REAL LOGIC ---
-    entities = ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"]
+    # 3. RUN ANALYSIS (The "Brain")
+    # This scans the text for the selected entities
+    results = analyzer.analyze(
+        text=user_text,
+        entities=entities,
+        language='en'
+    )
+
+    # 4. RUN ANONYMIZATION (The "Redactor")
+    # This replaces the found entities with <REDACTED>
+    anonymized_result = anonymizer.anonymize(
+        text=user_text,
+        analyzer_results=results
+    )
+
+    final_text = anonymized_result.text
+
+    # 5. (OPTIONAL) ADD PRO BADGE
+    # If they are pro, maybe we show them something special?
     if is_pro:
-        # PRO: Add more entities or allow longer text
-        entities.extend(["AU_MEDICARE", "AU_TFN", "DATE_OF_BIRTH"])
+        pass  # Logic for pro users (e.g. handle images, PDFs, etc.)
+    else:
+        # Free Tier Limitation: Truncate very long text?
+        if len(final_text) > 1000:
+            final_text = final_text[:1000] + "\n\n[TEXT TRUNCATED - SUBSCRIBE FOR UNLIMITED]"
 
-    # CALL YOUR REDACTION FUNCTION HERE
-    # Example: redacted_result = my_redactor_engine.redact(user_text, entities)
-
-    # If you don't have your function handy, here is a placeholder that works:
-    import re
-    redacted_result = user_text
-    if "EMAIL" in entities:
-        # Simple regex to hide emails (Replace this with your real AI call!)
-        redacted_result = re.sub(r'[\w\.-]+@[\w\.-]+', '[EMAIL REDACTED]', redacted_result)
-    # --- END OF REAL LOGIC ---
-
-    # 3. Return the result to the template
+    # 6. RETURN RESULTS
     return templates.TemplateResponse("index.html", {
         "request": request,
         "original_text": user_text,
-        "result_text": redacted_result
+        "result_text": final_text
     })
