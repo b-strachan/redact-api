@@ -29,6 +29,7 @@ class RedactionService:
         print("NLP Model & Custom Rules Loaded.")
 
     def add_dob_recognizer(self):
+        # Explicitly catch DD/MM/YYYY or DD-MM-YYYY
         regex = r"\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b"
         self.analyzer.registry.add_recognizer(
             PatternRecognizer(supported_entity="DATE_OF_BIRTH", patterns=[Pattern("dob", regex, 0.95)])
@@ -60,8 +61,8 @@ class RedactionService:
     def redact_text(self, text: str, entities: list) -> tuple[str, int]:
         if not entities: return text, 0
 
-        # FORCE CHECK for our generic ID catcher
-        analysis_entities = list(set(entities + ["AU_GENERIC_ID", "PHONE_NUMBER", "DATE_TIME"]))
+        # FORCE CHECK for our generic ID catcher AND Date checks
+        analysis_entities = list(set(entities + ["AU_GENERIC_ID", "PHONE_NUMBER", "DATE_TIME", "DATE_OF_BIRTH"]))
 
         results = self.analyzer.analyze(
             text=text,
@@ -75,27 +76,32 @@ class RedactionService:
             entity_text = text[result.start:result.end]
             clean_digits = "".join(filter(str.isdigit, entity_text))
 
+            # --- PRIORITY 1: DATES (The Fix) ---
+            # If the AI *already* thinks it's a date, OR it has slashes, trust it.
+            # Do NOT let it fall into the "License" logic.
+            if result.entity_type in ["DATE_TIME", "DATE_OF_BIRTH", "DATE"] or "/" in entity_text:
+                # Map to whatever the user requested (DOB or generic Date)
+                if "DATE_OF_BIRTH" in entities:
+                    result.entity_type = "DATE_OF_BIRTH"
+                    final_results.append(result)
+                elif "DATE_TIME" in entities:
+                    result.entity_type = "DATE_TIME"
+                    final_results.append(result)
+                continue  # STOP HERE. Do not process this item further.
+
+            # --- PRIORITY 2: ID HIERARCHY ---
             detected_type = None
 
-            # --- 0. DATE SAFETY CHECK (The Fix) ---
-            # If it has slashes, it's a Date. Period.
-            # This prevents "23/07/2000" (8 digits) from being seen as a License.
-            if "/" in entity_text:
-                detected_type = "DATE_TIME"
-            if ":" in entity_text:
-                detected_type = "DATE_TIME"
-
             # 1. MOBILE PHONE: Starts with 04, Length 10
-            elif clean_digits.startswith("04") and len(clean_digits) == 10:
+            if clean_digits.startswith("04") and len(clean_digits) == 10:
                 detected_type = "PHONE_NUMBER"
 
             # 2. MEDICARE: Starts with 2-6, Length 10
             elif clean_digits and clean_digits[0] in "23456" and len(clean_digits) == 10:
                 detected_type = "AU_MEDICARE"
 
-            # 3. THE 9-DIGIT CONFLICT (TFN vs License)
+            # 3. 9-DIGIT CONFLICT (TFN vs License)
             elif len(clean_digits) == 9:
-                # Check context for "License" words
                 if self.check_context(text, result.start, ["license", "licence", "driver", "dl", "vic roads"]):
                     detected_type = "AU_DRIVERS_LICENSE"
                 else:
@@ -110,16 +116,7 @@ class RedactionService:
                 detected_type = result.entity_type
 
             # --- FILTERING ---
-            # If detected as DATE_TIME, map it to what the user asked for (DOB or Date)
-            if detected_type == "DATE_TIME":
-                if "DATE_OF_BIRTH" in entities:
-                    result.entity_type = "DATE_OF_BIRTH"
-                    final_results.append(result)
-                elif "DATE_TIME" in entities:
-                    result.entity_type = "DATE_TIME"
-                    final_results.append(result)
-
-            elif detected_type and detected_type in entities:
+            if detected_type and detected_type in entities:
                 result.entity_type = detected_type
                 final_results.append(result)
 
