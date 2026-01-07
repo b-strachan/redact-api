@@ -27,6 +27,46 @@ class RedactionService:
 
         print("NLP Model & Custom Rules Loaded.")
 
+    def add_australian_recognizers(self):
+        """
+        Adds support for specific Australian Identity Documents.
+        """
+        # 1. Medicare Card (Green/Blue/Yellow)
+        # Format: 10 digits. Usually 4 digits, space, 5 digits, space, 1 digit
+        # Regex: Matches "1234 56789 1" or "1234567891"
+        medicare_regex = r"\b[2-6]\d{3}[- ]?\d{5}[- ]?\d{1}\b"
+        medicare_pattern = Pattern(name="au_medicare", regex=medicare_regex, score=0.85)
+        self.analyzer.registry.add_recognizer(
+            PatternRecognizer(supported_entity="AU_MEDICARE", patterns=[medicare_pattern])
+        )
+
+        # 2. Tax File Number (TFN)
+        # Format: 8 or 9 digits. Critical for HR/Payroll.
+        # Regex: Matches "123 456 789" or "123456789"
+        tfn_regex = r"\b\d{3}\s?\d{3}\s?\d{2,3}\b"
+        tfn_pattern = Pattern(name="au_tfn", regex=tfn_regex, score=0.85)
+        # Note: We add context words to avoid false positives (e.g. avoiding random phone numbers)
+        self.analyzer.registry.add_recognizer(
+            PatternRecognizer(
+                supported_entity="AU_TFN",
+                patterns=[tfn_pattern],
+                context=["tfn", "tax file number", "ato", "tax"]
+            )
+        )
+
+        # 3. Australian Driver's License
+        # Format: Varies by state, but usually 8-10 digits.
+        # Context is key here (needs to see "Licence" or "DL" nearby)
+        dl_regex = r"\b\d{8,10}\b"
+        dl_pattern = Pattern(name="au_drivers_license", regex=dl_regex, score=0.6)
+        self.analyzer.registry.add_recognizer(
+            PatternRecognizer(
+                supported_entity="AU_DRIVERS_LICENSE",
+                patterns=[dl_pattern],
+                context=["licence", "license", "driver", "dl", "vic roads", "rms"]
+            )
+        )
+
     def add_legal_recognizer(self):
         regex = r"(?i)\bCase\s?No\.?\s?\d{2}-\d{4}\b"
         pattern = Pattern(name="legal_case_pattern", regex=regex, score=0.85)

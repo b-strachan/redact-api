@@ -4,6 +4,15 @@ from presidio_anonymizer import AnonymizerEngine
 
 
 def __init__(self):
+    # ... setup code ...
+    self.add_legal_recognizer()
+    self.add_phone_backup_recognizer()
+    self.add_dob_recognizer()
+
+    # Add the Aussie logic
+    self.add_australian_recognizers()
+
+def __init__(self):
     # ... (previous setup code) ...
 
     self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
