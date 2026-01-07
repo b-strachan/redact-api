@@ -29,11 +29,3 @@ def __init__(self):
     print("Loading NLP Model...")
     self.analyzer = AnalyzerEngine()
     self.anonymizer = AnonymizerEngine()
-
-    # --- Add Custom "Niche" Logic Here ---
-    # Example: Detect Legal Case Numbers like "Case No. 22-9983"
-    self.add_custom_recognizer(
-        pattern_name="LEGAL_CASE_ID",
-        regex_pattern=r"(?i)\bCase\s?No\.?\s?\d{2}-\d{4}\b"
-    )
-    print("NLP Model & Custom Rules Loaded.")
