@@ -34,19 +34,16 @@ RedactAI implements a custom decision tree on top of Microsoft Presidio and Spac
 * **Deployment:** Docker & Railway
 * **Infrastructure:** CI/CD via GitHub Actions
 
----
+Local Installation
 
-## 🔌 API Usage
+# 1. Clone the repo
+git clone [https://github.com/b-strachan/redact-api.git](https://github.com//b-strachan/redact-api.git)
 
-**Endpoint:** `POST /v1/redact/text`
+# 2. Install dependencies
+pip install -r requirements.txt
 
-**Headers:**
-* `Content-Type`: `application/json`
-* `X-API-Key`: `[YOUR_API_KEY]`
+# 3. Download the NLP Brain (500MB)
+python -m spacy download en_core_web_lg
 
-**Body:**
-```json
-{
-  "text": "Email me at test@gmail.com regarding Medicare 4123 45678 1.",
-  "entities_to_redact": ["AU_MEDICARE", "EMAIL_ADDRESS"]
-}
+# 4. Run the server
+python run.py
