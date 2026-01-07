@@ -25,7 +25,7 @@ app = FastAPI(
     version="1.0.0",
     contact={
         "name": "RedactionAI Support",
-        "email": "support@redactionai.com",
+        "email": "bailey.r.strachan@gmail.com",
     },
     docs_url="/docs",
     redoc_url="/redoc"
