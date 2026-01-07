@@ -19,32 +19,44 @@ async def read_root(request: Request):
     })
 
 
-# 2. The Redaction Logic (POST Request)
-# This runs when you click "Redact Now".
+# ... imports and setup ...
+
 @app.post("/redact", response_class=HTMLResponse)
 async def redact_text(
         request: Request,
-        user_text: str = Form(...),  # Matches name="user_text" in HTML
-        api_key: str = Form(default="")  # Matches name="api_key" in HTML
+        user_text: str = Form(...),
+        api_key: str = Form(default="")
 ):
-    # --- SIMULATED REDACTION LOGIC ---
-
-    # Check if they are a PRO user
+    # 1. Check if Pro
     is_pro = False
-    if api_key == "pro_key_123":  # Simple check for the demo
+    valid_keys = ["pro_key_123", "secret-dev-key"]  # Add your real keys here
+
+    if api_key in valid_keys:
         is_pro = True
 
-    # Perform the redaction
-    if is_pro:
-        # Pro users get a different message or better processing
-        redacted_result = f"[PRO MODE ACTIVE] Redacted: {user_text.replace('John', '[NAME]')}"
-    else:
-        # Free users logic
-        redacted_result = f"[FREE MODE] Redacted: {user_text.replace('John', '****')}"
+    # 2. RUN YOUR REAL REDACTION HERE
+    # (I am putting your probable logic here based on your previous messages)
 
-    # --- RELOAD THE PAGE WITH RESULTS ---
+    # --- START OF REAL LOGIC ---
+    entities = ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"]
+    if is_pro:
+        # PRO: Add more entities or allow longer text
+        entities.extend(["AU_MEDICARE", "AU_TFN", "DATE_OF_BIRTH"])
+
+    # CALL YOUR REDACTION FUNCTION HERE
+    # Example: redacted_result = my_redactor_engine.redact(user_text, entities)
+
+    # If you don't have your function handy, here is a placeholder that works:
+    import re
+    redacted_result = user_text
+    if "EMAIL" in entities:
+        # Simple regex to hide emails (Replace this with your real AI call!)
+        redacted_result = re.sub(r'[\w\.-]+@[\w\.-]+', '[EMAIL REDACTED]', redacted_result)
+    # --- END OF REAL LOGIC ---
+
+    # 3. Return the result to the template
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "original_text": user_text,  # Put their original text back so they don't lose it
-        "result_text": redacted_result  # Fill the right box with the answer
+        "original_text": user_text,
+        "result_text": redacted_result
     })
