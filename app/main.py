@@ -15,7 +15,7 @@ RedactionAI helps you automatically strip sensitive Australian PII data from tex
 
 ## How to use
 1. **Get an API Key:** (Contact sales@redactionai.com)
-2. **Authenticate:** Use the `X-API-Key` header.
+2. **Authenticate:** Use the `Redact-API-Key` header.
 3. **Send Data:** Post JSON to `/v1/redact/text`.
 """
 
