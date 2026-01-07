@@ -3,10 +3,20 @@ from typing import List, Optional
 
 # Request model for text redaction
 class RedactRequest(BaseModel):
-    text: str = Field(..., example="My name is John Doe and my phone is 555-0199.")
+    text: str = Field(..., example="My name is John Doe, my TFN is 123 456 789 and I live in Geelong.")
     entities_to_redact: List[str] = Field(
-        # These are the standard Presidio entity names
-        default=["PERSON", "PHONE_NUMBER", "EMAIL_ADDRESS", "US_SSN", "LOCATION", "DATE_TIME", "DOB_DATE"],
+        # These are the standard Presidio entity names + Your Custom Aussie ones
+        default=[
+            "PERSON",
+            "PHONE_NUMBER",
+            "EMAIL_ADDRESS",
+            "AU_MEDICARE",
+            "AU_TFN",
+            "AU_DRIVERS_LICENSE",
+            "LOCATION",
+            "DATE_TIME",
+            "DATE_OF_BIRTH"
+        ],
         description="List of entity types to redact"
     )
 
@@ -14,4 +24,4 @@ class RedactRequest(BaseModel):
 class RedactResponse(BaseModel):
     original_length: int
     redacted_text: str
-    items_redacted: int
+    count: int
