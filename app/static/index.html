@@ -17,11 +17,19 @@
         textarea { width: 100%; height: 200px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; resize: none; box-sizing: border-box; }
         textarea:focus { outline: 2px solid #4299e1; border-color: transparent; }
 
-        button { background-color: #4299e1; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: background 0.2s; width: 100%; font-size: 16px; }
-        button:hover { background-color: #3182ce; }
+        /* Updated Button Styling to look clickable */
+        .btn-submit { background-color: #4299e1; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: background 0.2s; width: 100%; font-size: 16px; }
+        .btn-submit:hover { background-color: #3182ce; }
+
+        /* Subscribe button specific style */
+        .btn-subscribe { background-color: #38b2ac; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-subscribe:hover { background-color: #319795; }
 
         .output { background-color: #f7fafc; border: 1px solid #e2e8f0; color: #2d3748; }
         label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em; color: #718096; }
+
+        .api-key-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+        .api-input { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -31,103 +39,48 @@
 
     <div style="background: #e6fffa; border: 1px solid #38b2ac; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
         <span style="color: #234e52; font-weight: 600;">Need to process more documents? Get the Pro API.</span>
-        <a href="https://buy.stripe.com/14AcMYci9bZiexua8mak001" target="_blank">
-    <button type="button" class="btn-subscribe">Subscribe ($9/mo)</button>
-</a>
-    </div>
-
-    <label>Select entities to redact:</label>
-    <div class="options-grid">
-        <label class="checkbox-item"><input type="checkbox" id="chk_person" checked> Names (Person)</label>
-        <label class="checkbox-item"><input type="checkbox" id="chk_email" checked> Emails</label>
-        <label class="checkbox-item"><input type="checkbox" id="chk_phone" checked> Phone Numbers</label>
-
-        <label class="checkbox-item"><input type="checkbox" id="chk_medicare" checked> 🇦🇺 Medicare</label>
-        <label class="checkbox-item"><input type="checkbox" id="chk_tfn" checked> 🇦🇺 TFN</label>
-        <label class="checkbox-item"><input type="checkbox" id="chk_license" checked> 🇦🇺 Driver License</label>
-
-        <label class="checkbox-item"><input type="checkbox" id="chk_dob" checked> Dates of Birth</label>
-        <label class="checkbox-item"><input type="checkbox" id="chk_location" checked> Locations</label>
-    </div>
-
-    <div class="grid">
-        <div>
-            <label>Original Text</label>
-            <textarea id="inputText" placeholder="My name is John Doe&#10;Email me at test@gmail.com&#10;Medicare: 4123 45678 1&#10;License: 098567234"></textarea>
-        </div>
-        <div>
-            <label>Redacted Result</label>
-            <textarea id="outputText" class="output" readonly></textarea>
-        </div>
+        <a href="https://buy.stripe.com/14AcMYci9bZiexua8mak001" target="_blank" style="text-decoration: none;">
+            <button type="button" class="btn-subscribe">Subscribe ($9/mo)</button>
+        </a>
     </div>
 
     <form action="/redact" method="post">
 
-    <label>Enter Text to Redact:</label>
-    <textarea name="user_text" rows="5" required></textarea>
+        <label>Select entities to redact:</label>
+        <div class="options-grid">
+            <label class="checkbox-item"><input type="checkbox" name="entities" value="PERSON" checked> Names (Person)</label>
+            <label class="checkbox-item"><input type="checkbox" name="entities" value="EMAIL" checked> Emails</label>
+            <label class="checkbox-item"><input type="checkbox" name="entities" value="PHONE" checked> Phone Numbers</label>
 
-    <div style="margin-top: 10px; margin-bottom: 10px;">
-        <label>Pro API Key (Optional):</label>
-        <input type="text" name="api_key" placeholder="Paste key here if you have one">
+            <label class="checkbox-item"><input type="checkbox" name="entities" value="MEDICARE" checked> 🇦🇺 Medicare</label>
+            <label class="checkbox-item"><input type="checkbox" name="entities" value="TFN" checked> 🇦🇺 TFN</label>
+            <label class="checkbox-item"><input type="checkbox" name="entities" value="LICENSE" checked> 🇦🇺 Driver License</label>
+
+            <label class="checkbox-item"><input type="checkbox" name="entities" value="DOB" checked> Dates of Birth</label>
+            <label class="checkbox-item"><input type="checkbox" name="entities" value="LOCATION" checked> Locations</label>
+        </div>
+
+        <div class="grid">
+            <div>
+                <label>Original Text</label>
+                <textarea name="user_text" placeholder="Paste your text here..." required>{{ original_text }}</textarea>
+            </div>
+
+            <div>
+                <label>Redacted Result</label>
+                <textarea class="output" readonly>{{ result_text }}</textarea>
+            </div>
+        </div>
+
+        <div class="api-key-section">
+            <label>Pro API Key (Optional)</label>
+            <input type="text" name="api_key" class="api-input" placeholder="Paste key here if you have one (e.g. pro_key_123)">
+
+            <button type="submit" class="btn-submit">Redact Now</button>
+        </div>
+
+    </form>
     </div>
-
-    <button type="submit">Redact Now</button>
-
-</form>
-
-<p>
-    Need a key?
-    <a href="https://buy.stripe.com/14AcMYci9bZiexua8mak001" target="_blank">Subscribe here</a>
-</p>
-</div>
-
-<script>
-    async function redactText() {
-        const text = document.getElementById("inputText").value;
-        const outputBox = document.getElementById("outputText");
-
-        outputBox.value = "Processing...";
-
-        let entities = [];
-
-        if(document.getElementById("chk_person").checked) entities.push("PERSON");
-        if(document.getElementById("chk_email").checked) entities.push("EMAIL_ADDRESS");
-        if(document.getElementById("chk_phone").checked) entities.push("PHONE_NUMBER");
-
-        if(document.getElementById("chk_medicare").checked) entities.push("AU_MEDICARE");
-        if(document.getElementById("chk_tfn").checked) entities.push("AU_TFN");
-        if(document.getElementById("chk_license").checked) entities.push("AU_DRIVERS_LICENSE");
-
-        if(document.getElementById("chk_dob").checked) entities.push("DATE_OF_BIRTH");
-        if(document.getElementById("chk_location").checked) entities.push("LOCATION");
-
-        if(document.getElementById("chk_dob").checked) entities.push("DATE_TIME");
-
-        try {
-            const response = await fetch('/v1/redact/text', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Redact-API-Key': 'secret-dev-key'
-                },
-                body: JSON.stringify({
-                    text: text,
-                    entities_to_redact: entities
-                })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                outputBox.value = data.redacted_text;
-            } else {
-                outputBox.value = "Error: " + JSON.stringify(data);
-            }
-        } catch (error) {
-            outputBox.value = "Network Error: " + error.message;
-        }
-    }
-</script>
 
 </body>
 </html>
