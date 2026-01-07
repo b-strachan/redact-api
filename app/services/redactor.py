@@ -93,25 +93,40 @@ class RedactionService:
 
     def redact_text(self, text: str, entities: list) -> tuple[str, int]:
         try:
-            # 1. ANALYSIS: Use the list EXACTLY as the user sent it.
-            # We no longer force "AU_MEDICARE" etc. if the user didn't ask for it.
-
-            # If the user sent an empty list (redact nothing), return immediately
             if not entities:
                 return text, 0
 
+            # 1. ANALYSIS STRATEGY:
+            # We must ALWAYS look for the specific Australian rules (Medicare, TFN, etc).
+            # Why? Because if we don't, the "Dumb" Phone rule will mistake a Medicare card
+            # for a Phone Number.
+            # So we force the AI to identify "Medicare" first (Score 1.0), which prevents
+            # "Phone" (Score 0.6) from claiming it.
+
+            forced_conflicts = ["AU_MEDICARE", "AU_TFN", "AU_DRIVERS_LICENSE"]
+            analysis_entities = list(set(entities + forced_conflicts))
+
             results = self.analyzer.analyze(
                 text=text,
-                entities=entities,
+                entities=analysis_entities,
                 language='en'
             )
 
-            # 2. LABELS: We still define the replacement tags for everything,
-            # just in case the user asks for them.
+            # 2. FILTERING STRATEGY:
+            # Now we have the results. Some might be "AU_MEDICARE" even though the user
+            # didn't check the box. We filter those out NOW.
+
+            final_results = []
+            for result in results:
+                # Only keep the result if the user actually asked for this entity type
+                if result.entity_type in entities:
+                    final_results.append(result)
+
+            # 3. LABELS
             operators = {
                 "LEGAL_CASE_ID": OperatorConfig("replace", {"new_value": "[CASE_ID]"}),
                 "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "[PHONE]"}),
-                "EMAIL_ADDRESS": OperatorConfig("replace", {"new_value": "[EMAIL]"}),  # <--- Added Email
+                "EMAIL_ADDRESS": OperatorConfig("replace", {"new_value": "[EMAIL]"}),
                 "DATE_OF_BIRTH": OperatorConfig("replace", {"new_value": "[DOB]"}),
                 "DATE_TIME": OperatorConfig("replace", {"new_value": "[DATE]"}),
                 "AU_MEDICARE": OperatorConfig("replace", {"new_value": "[MEDICARE]"}),
@@ -121,17 +136,17 @@ class RedactionService:
                 "DEFAULT": OperatorConfig("replace", {"new_value": "[REDACTED]"})
             }
 
+            # 4. ANONYMIZE (Using only the filtered results)
             anonymized_result = self.anonymizer.anonymize(
                 text=text,
-                analyzer_results=results,
+                analyzer_results=final_results,
                 operators=operators
             )
 
-            return anonymized_result.text, len(results)
+            return anonymized_result.text, len(final_results)
 
         except Exception as e:
             print(f"CRASH IN REDACTOR: {str(e)}")
             raise e
-
 # Create singleton instance
 redactor = RedactionService()
