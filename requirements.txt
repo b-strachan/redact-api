@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+python-multipart
+python-dotenv
+presidio-analyzer
+presidio-anonymizer
+spacy
+# This link installs the brain directly
+https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl

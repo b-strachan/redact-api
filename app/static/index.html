@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedactAI - Live Demo</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; color: #333; display: flex; justify-content: center; padding: 50px; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 800px; }
+        h1 { margin-top: 0; color: #2d3748; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        textarea { width: 100%; height: 200px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; resize: none; box-sizing: border-box; }
+        textarea:focus { outline: 2px solid #4299e1; border-color: transparent; }
+        button { background-color: #4299e1; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: background 0.2s; }
+        button:hover { background-color: #3182ce; }
+        .output { background-color: #edf2f7; border: 1px solid #e2e8f0; color: #2d3748; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em; color: #718096; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>RedactAI Demo</h1>
+    <p>Paste legal text, emails, or phone numbers below to see the AI redaction in real-time.</p>
+
+    <div class="grid">
+        <div>
+            <label>Original Text</label>
+            <textarea id="inputText" placeholder="Enter text here... e.g. Call John on 0412 345 678 regarding Case No. 24-1099."></textarea>
+        </div>
+        <div>
+            <label>Redacted Result</label>
+            <textarea id="outputText" class="output" readonly></textarea>
+        </div>
+    </div>
+
+    <button onclick="redactText()">Redact Now</button>
+</div>
+
+<script>
+    async function redactText() {
+        const text = document.getElementById("inputText").value;
+        const outputBox = document.getElementById("outputText");
+
+        // Visual feedback so you know it's working
+        outputBox.value = "Processing...";
+
+        try {
+            const response = await fetch('/v1/redact/text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': 'secret-dev-key'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    // The complete list of entities including DOB
+                    entities_to_redact: [
+                        "PERSON",
+                        "PHONE_NUMBER",
+                        "LEGAL_CASE_ID",
+                        "EMAIL_ADDRESS",
+                        "DATE_OF_BIRTH",
+                        "DATE_TIME",
+                        "US_SSN",
+                        "LOCATION"
+                    ]
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                outputBox.value = data.redacted_text;
+            } else {
+                outputBox.value = "Error: " + JSON.stringify(data);
+            }
+        } catch (error) {
+            outputBox.value = "Network Error: " + error.message;
+        }
+    }
+</script>
+
+</body>
+</html>
