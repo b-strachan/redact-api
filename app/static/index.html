@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RedactAI - Live Demo</title>
+    <title>RedactAI - Australian Privacy Compliance</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; color: #333; display: flex; justify-content: center; padding: 50px; }
         .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 800px; }
@@ -24,7 +24,7 @@
 
     <div style="background: #e6fffa; border: 1px solid #38b2ac; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
         <span style="color: #234e52; font-weight: 600;">Need to process more documents? Get the Pro API.</span>
-        <a href="https://buy.stripe.com/dRmaEQgypfbu60Y5S6ak000" target="_blank" style="background-color: #38b2ac; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: bold;">
+        <a href="YOUR_STRIPE_LINK_HERE" target="_blank" style="background-color: #38b2ac; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; font-weight: bold;">
             Subscribe ($9/mo)
         </a>
     </div>
@@ -34,7 +34,7 @@
     <div class="grid">
         <div>
             <label>Original Text</label>
-            <textarea id="inputText" placeholder="Enter text here... e.g. Call John on 0412 345 678 regarding Case No. 24-1099."></textarea>
+            <textarea id="inputText" placeholder="Employee: John Smith, TFN: 123 456 789, Medicare: 2123 45678 1. Please process payroll."></textarea>
         </div>
         <div>
             <label>Redacted Result</label>
@@ -50,7 +50,6 @@
         const text = document.getElementById("inputText").value;
         const outputBox = document.getElementById("outputText");
 
-        // Visual feedback so you know it's working
         outputBox.value = "Processing...";
 
         try {
@@ -62,7 +61,6 @@
                 },
                 body: JSON.stringify({
                     text: text,
-                    // The complete list of entities including DOB
                     entities_to_redact: [
                         "PERSON",
                         "PHONE_NUMBER",
@@ -71,7 +69,7 @@
                         "DATE_OF_BIRTH",
                         "DATE_TIME",
                         "US_SSN",
-                        "LOCATION"
+                        "LOCATION",
                         "AU_MEDICARE",
                         "AU_TFN",
                         "AU_DRIVERS_LICENSE"
