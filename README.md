@@ -19,7 +19,7 @@ Standard NLP models often confuse Australian specific formats. For example:
 ### The Solution: "Strict Hierarchy" Logic
 RedactionAI implements a custom decision tree on top of Microsoft Presidio and Spacy (`en_core_web_lg`) to resolve these conflicts with 99% accuracy:
 
-1.  **Date Safety Valve:** Explicit checks for date formats (e.g., `/` usage) prevent dates from being redacted as Licenses.
+1.  **Date Safety Valve:** Explicit checks for date formats (e.g., `/` usage).
 2.  **Mobile Prefix Logic:** Distinguishes 10-digit Mobile numbers (`04...`) from 10-digit Medicare cards (`2...` to `6...`).
 3.  **Context Awareness:** Uses NLP context windowing to distinguish between 9-digit TFNs and 9-digit Driver's Licenses by looking for keywords (`"License"`, `"DL"`, `"VicRoads"`) preceding the number.
 
@@ -33,20 +33,3 @@ RedactionAI implements a custom decision tree on top of Microsoft Presidio and S
 * **API Framework:** Flask (RESTful API)
 * **Deployment:** Docker & Railway
 * **Infrastructure:** CI/CD via GitHub Actions
-
----
-
-## 🔌 API Usage
-
-**Endpoint:** `POST /v1/redact/text`
-
-**Headers:**
-* `Content-Type`: `application/json`
-* `X-API-Key`: `[YOUR_API_KEY]`
-
-**Body:**
-```json
-{
-  "text": "Email me at test@gmail.com regarding Medicare 4123 45678 1.",
-  "entities_to_redact": ["AU_MEDICARE", "EMAIL_ADDRESS"]
-}
