@@ -4,9 +4,6 @@
 
 Unlike generic redaction tools that struggle with Australian formats, RedactionAI is engineered to handle the specific conflicts between Australian Identity Documents (Medicare, TFN, Driver's Licenses) and standard data types (Dates, Phone Numbers).
 
-## 🚀 Live Demo
-**Try it here:** [https://redact-api-10f0.up.railway.app/](https://redact-api-10f0.up.railway.app/)
-
 ---
 
 ## 🧠 The Engineering Challenge
