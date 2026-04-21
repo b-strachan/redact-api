@@ -28,7 +28,7 @@ async def read_root(request: Request):
 async def redact_text(
         request: Request,
         user_text: str = Form(...),
-        entities: List[str] = Form(default=[]),  # Gets the checkboxes!
+        entities: List[str] = Form(default=[]), 
         api_key: str = Form(default="")
 ):
     # 1. CHECK FOR PRO ACCESS
@@ -41,8 +41,6 @@ async def redact_text(
     if not entities:
         entities = ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"]
 
-    # 3. RUN ANALYSIS (The "Brain")
-    # This scans the text for the selected entities
     results = analyzer.analyze(
         text=user_text,
         entities=entities,
@@ -58,12 +56,10 @@ async def redact_text(
 
     final_text = anonymized_result.text
 
-    # 5. (OPTIONAL) ADD PRO BADGE
-    # If they are pro, maybe we show them something special?
     if is_pro:
         pass  # Logic for pro users (e.g. handle images, PDFs, etc.)
     else:
-        # Free Tier Limitation: Truncate very long text?
+        
         if len(final_text) > 1000:
             final_text = final_text[:1000] + "\n\n[TEXT TRUNCATED - SUBSCRIBE FOR UNLIMITED]"
 
