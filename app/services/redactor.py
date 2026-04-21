@@ -9,7 +9,7 @@ class RedactionService:
     def __init__(self):
         print("Initializing NLP Engine...")
 
-        # Setting up Spacy with the large English model for better accuracy
+    
         nlp_configuration = {
             "nlp_engine_name": "spacy",
             "models": [{"lang_code": "en", "model_name": "en_core_web_lg"}],
@@ -21,7 +21,7 @@ class RedactionService:
         self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
         self.anonymizer = AnonymizerEngine()
 
-        # Loading my custom regex rules
+        
         self.add_dob_recognizer()
         self.add_generic_aussie_catcher()
         self.add_phone_backup_recognizer()
@@ -80,20 +80,12 @@ class RedactionService:
 
             detected_type = None
 
-            # --- STEP 1: HARD DATE CHECK (Highest Priority) ---
-            # If it has a slash (e.g. 01/01/1990), it is definitely a Date.
-            # I accept this immediately to prevent it from falling into the License logic.
+    
             if "/" in entity_text:
                 detected_type = "DATE_TIME"
-
-            # --- STEP 2: STRONG ID CHECKS ---
-            # If it wasn't a slash-date, I check for specific ID patterns.
             if not detected_type:
-                # A. MOBILE PHONE: Starts with 04 and is 10 digits long
                 if clean_digits.startswith("04") and len(clean_digits) == 10:
                     detected_type = "PHONE_NUMBER"
-
-                # B. MEDICARE: Starts with 2-6 and is 10 digits long
                 elif clean_digits and clean_digits[0] in "23456" and len(clean_digits) == 10:
                     detected_type = "AU_MEDICARE"
 
@@ -105,18 +97,15 @@ class RedactionService:
                     else:
                         # Otherwise, default to TFN
                         detected_type = "AU_TFN"
-
-            # --- STEP 3: SOFT DATE CHECK ---
-            # If it wasn't a Strong ID, but Spacy thinks it's a date (e.g. "Jan 1st"), I trust it.
+                        
+            # If it wasn't a Strong ID, but Spacy thinks it's a date (e.g. "Jan 1st") trust it.
             if not detected_type and result.entity_type in ["DATE_TIME", "DATE_OF_BIRTH", "DATE"]:
                 detected_type = "DATE_TIME"
 
-            # --- STEP 4: WEAK ID CHECK (Fallback) ---
             # If it's an 8-10 digit number and nothing else matched, assume it's a License.
             if not detected_type and (8 <= len(clean_digits) <= 10):
                 detected_type = "AU_DRIVERS_LICENSE"
 
-            # --- STEP 5: DEFAULT FALLBACK ---
             # If none of my custom logic applied, use whatever Spacy found originally.
             if not detected_type:
                 detected_type = result.entity_type
