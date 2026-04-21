@@ -14,10 +14,6 @@ templates = Jinja2Templates(directory="templates")
 analyzer = AnalyzerEngine()
 anonymizer = AnonymizerEngine()
 
-# VALID API KEYS (You can add more here)
-VALID_KEYS = ["pro_key_123", "secret-dev-key", "bailey-admin"]
-
-
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     # Render the empty form on first load
