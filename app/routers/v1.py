@@ -4,7 +4,7 @@ from app.auth import get_api_key
 from app.services.redactor import redactor
 from app.schemas import RedactRequest, RedactResponse
 
-# This defines a router that we will attach to main.py
+
 router = APIRouter(prefix="/v1")
 
 
@@ -14,7 +14,7 @@ async def redact_text(request: RedactRequest):
     Redacts text based on the provided list of entities.
     """
     try:
-        # Call our smart Australian Redactor
+    
         redacted_text, count = redactor.redact_text(request.text, request.entities_to_redact)
 
         return RedactResponse(
@@ -53,8 +53,8 @@ async def redact_file(
             # Fallback if parsing fails
             entities_list = ["PERSON", "PHONE_NUMBER", "EMAIL_ADDRESS", "AU_MEDICARE"]
 
-        # 3. USE YOUR NEW AUSTRALIAN LOGIC
-        # This calls the exact same logic we perfected for the demo.
+      
+
         redacted_text, count = redactor.redact_text(text_content, entities_list)
 
         return {
